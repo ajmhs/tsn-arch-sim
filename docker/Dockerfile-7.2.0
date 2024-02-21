@@ -1,0 +1,42 @@
+FROM debian:bookworm-slim as connext_72
+ARG ARCH=x64
+ARG KERNEL_MAJOR_VER=6
+ARG GCC_MAJOR_VER=12
+
+ENV DISPLAY :0
+ENV SHELL /bin/bash
+ENV RTIPLATFORM ${arch}Linux${KERNEL_MAJOR_VER}gcc${GCC_MAJOR_VER}
+ENV TZ=Europe/Madrid
+ENV DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /root
+
+# Install build tools at al  
+RUN apt-get update && apt-get -y install dash tzdata build-essential libgtk2.0-0 libxxf86vm1 libsm6 libcanberra-gtk-module iproute2 iputils-ping
+
+# Copy the installation files into the image
+COPY rti_connext_dds-7.2.0-pro-host-x64Linux.run \
+     rti_connext_dds-7.2.0-pro-target-x64Linux4gcc7.3.0.rtipkg \
+     ./
+
+# Run the host package installer
+RUN chmod +x rti_connext_dds-7.2.0-pro-host-x64Linux.run && \
+    ./rti_connext_dds-7.2.0-pro-host-x64Linux.run --mode unattended
+ 
+# Run the target package installer
+RUN /opt/rti_connext_dds-7.2.0/bin/rtipkginstall \
+    -u rti_connext_dds-7.2.0-pro-target-x64Linux4gcc7.3.0.rtipkg
+ 
+# Set up the DDS execution environment
+ENV NDDSHOME /opt/rti_connext_dds-7.2.0
+ENV PATH $PATH:$NDDSHOME/bin
+ 
+# Install the license file
+COPY rti_license.dat /opt/rti_connext_dds-7.2.0
+ 
+# Remove the installers
+RUN rm -rf rti_connext_dds-7.2.0-pro-host-x64Linux.run \
+     rti_connext_dds-7.2.0-pro-target-x64Linux4gcc7.3.0.rtipkg
+
+# Setup the environment
+RUN /opt/rti_connext_dds-7.2.0/resource/scripts/rtisetenv_x64Linux4gcc7.3.0.bash
